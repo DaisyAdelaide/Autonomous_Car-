@@ -1,0 +1,386 @@
+#include <SPI.h>
+#include <WiFi.h>
+#include <hcrs04.h>
+
+#define PINTRIG 5
+#define PINECHO 6
+
+hcrs04 mySensor(PINTRIG, PINECHO);
+char ssid[] = "NETGEAR65"; 
+char pass[] = "littlecello367";    
+int keyIndex = 0;  
+char message[1];
+int count=0;         
+String finalMessage;
+int flagfour=0;
+int flagfour2=0;
+int nextstopnumber;
+int number[5]={0,0,0,0,0};
+int stop4 = 0;
+int oneEightyvar = 0;
+int status = WL_IDLE_STATUS;  
+IPAddress server(192,168,1,2);
+WiFiClient client;
+int stop5 = 0;
+int motor11 = 39; // P2.6
+int motor12 = 40; // p2.7
+int motor21 = 38; // P2.4
+int motor22 = 34; // p2.3
+int led = 17  ;
+int AnalogValue[5] = {0,0,0,0,0};
+int AnalogPin[5] = {A6,A11,A13,A15,A14};
+int place = -1;
+int zero = 0;
+int one = 1;
+int startt =0;
+int lineonejunction = 0;
+int face=0;
+
+void setup() {
+  mySensor.begin();
+  Serial.begin(9600); 
+  pinMode(led,OUTPUT);
+  Serial.begin(9600);
+  while (!Serial) {
+    ;
+  } 
+  if (WiFi.status() == WL_NO_SHIELD) {
+        while (true);
+  } 
+  while (status != WL_CONNECTED) {
+   status = WiFi.begin(ssid, pass);
+  }  
+ if (client.connect(server, 80)) {
+ delay(10);
+ }
+}
+
+void loop() {
+count =0;
+if (startt==0){
+  startt++;
+  wifi1();
+}
+for (int i=0;i<5;i++){
+     AnalogValue[i]=analogRead(AnalogPin[i]);
+       if(AnalogValue[i]<100){
+           count++;
+        }
+}
+if (count>3){
+  digitalWrite(led, HIGH); 
+    sstopp();
+}
+
+else{
+ //EDGE THREE SENSOR INSTRUCTIONS
+if (AnalogValue[0]<200&&AnalogValue[1]<200&&AnalogValue[2]<200&&AnalogValue[4]>500){
+  if (place == 0 && lineonejunction==0){
+    if (number[1]==1){
+      halfoneEighty();
+      lineonejunction=1;
+      forward();
+      delay(20);
+      place = 0;
+      number[1]=0;
+    }
+    else{
+      place++;
+    }
+  }
+}
+else if(AnalogValue[3]<200&&AnalogValue[4]<200&&AnalogValue[2]<200&&AnalogValue[0]>500){
+  if (place == 2 && lineonejunction==0){
+    if (number[1]==1){
+      halfoneEightyright();
+      lineonejunction=1;
+      forward();
+      delay(20);
+      place = 0;
+      face=0;
+      number[1]=0;
+    }
+    else{
+      place--;
+    }
+  }  
+}
+//FIVE SENSOR INSTRUCTIONS
+      else if (AnalogValue[2]<200){
+       forward(); 
+      }
+      else if (AnalogValue[1]<200){
+      turnLEFT();
+      }
+     else if (AnalogValue[0]<200){
+      turnLEFTBIG();
+      }
+      else if (AnalogValue[3]<200){
+      turnRIGHT();  
+      }
+      else if (AnalogValue[4]<200){
+      turnRIGHTBIG();
+      }
+    
+  }
+}
+void sstopp(){
+  forward();
+  delay(50);
+  ssstopp();
+    if (lineonejunction<2){
+        if (face==0){
+          place=place+1;
+           if(stop5>0&&place==1){
+              place=5;
+           }
+         wifi1();    
+        }
+        
+        else {
+          place=place-1;
+                if (place==-1){
+                  ssstopp();
+                  place=4;
+                  wifi1();        
+                  oneEighty();
+                  place=-1;
+                  face=0;             
+                }
+               if (place!=-1){
+                   wifi1();
+                }
+        }
+    }
+  
+    if (place == 1&&lineonejunction == 1&&stop5==0){
+       digitalWrite(motor11, LOW); 
+       digitalWrite(motor12, LOW); 
+       digitalWrite(motor21, LOW); 
+       digitalWrite(motor22, LOW);
+       wifi1();
+       lineonejunction++;
+       onlyoneEighty();
+       place=1;
+       forward();
+       delay(50);
+    } 
+       else if (place==1&&lineonejunction==2){
+          digitalWrite(motor11, LOW); 
+          digitalWrite(motor12, LOW); 
+          digitalWrite(motor21, LOW); 
+          digitalWrite(motor22, LOW);
+          delay(1000); 
+          decideDirection2();
+        }  
+    if (stop5>0&&place == 5){
+       sensor();     
+    }  
+    if (stop5>0&&place == 1){
+      place=5;
+      wifi1();
+       sensor();     
+    }  
+}
+void wifi1(){
+ 
+  sendMessage();
+  delay(10);
+  recieveMessage();
+  delay(10);
+}
+
+void sensor(){
+   float DISTANCE = mySensor.read();
+   if(DISTANCE<6){
+      ssstopp();
+      delay(50000);
+   }
+   else {
+      forward();
+      delay(50);
+      sensor();
+   }
+}
+void decideDirection(){
+  if(place!=1){
+      if (place > nextstopnumber&& face == 0 ){
+          oneEighty();
+          face =1;
+          delay(10);
+      }
+      if (place < nextstopnumber&& face == 1){
+          oneEighty();
+          face =0;
+          delay(10);
+      }  
+  }
+}
+void decideDirection2(){
+  
+  sendMessage();
+  delay(10);
+  recieveMessage();
+  delay(10);
+  if (number[0] == 1 || number[4] == 1) {
+    face =1;
+    lineonejunction=0;
+    place=1;
+    halfoneEightyright();
+  }   
+      else if (number[2]==1||number[3]==1){
+        face =0;
+        lineonejunction=0;
+        place=1;
+        halfoneEighty();    
+      }
+}
+
+void sendMessage(){
+  String messageToSend = "POST /mobilerobotics/api/position/tag/?group=9&pos=";
+  messageToSend += place;
+  messageToSend += " HTTP/1.1";
+  client.println(messageToSend);
+  client.println("Host: energia.nu");
+  client.println(); 
+}
+
+void recieveMessage(){
+   char buffer[255] = {0};  
+   while (!client.available()) {}; 
+   if (client.available()) {
+      client.read((uint8_t*)buffer, client.available());
+    }
+    finalMessage = buffer;
+        for (int i=255; i>0; i--){
+            if(isDigit(finalMessage[i])){
+               nextstopnumber=(int)finalMessage[i]-48;
+                   number[nextstopnumber]=1;
+                   if(number[5]==1){
+                    stop5=1;
+                    number[5]=0;
+                    number[1]=1;
+                    nextstopnumber=1;
+                   }
+                   if(number[4]==1){
+                    flagfour=1;
+                    number[4]=0;
+                    number[0]=1;
+                   }
+                   if(place!=1&&place!=4)
+                   {
+                          if (face==0){
+                             if (place>nextstopnumber||nextstopnumber==4){
+                                //  face=1;
+                                  oneEighty();
+                                  delay(10);
+                              }
+                          }
+                          if (face==1&&place!=0&&place!=2){
+                              if (place<nextstopnumber&&nextstopnumber!=4){
+                                   //face=0;
+                                   oneEighty();
+                                   delay(10);
+                              }
+                          }
+                          
+                   }        
+                   
+              break;            
+          }
+    }
+}
+
+void ssstopp(){
+    digitalWrite(motor11, LOW); 
+    digitalWrite(motor12, LOW); 
+    digitalWrite(motor21, LOW); 
+    digitalWrite(motor22, LOW);
+}
+void oneEighty(){
+
+  if (face==1){
+    face=0;
+  }
+  else{
+    face=1;
+  }
+if (face==1){ 
+digitalWrite(motor12, LOW); 
+analogWrite(motor11, 250); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 250);
+delay(750); }
+else if (face==0){
+  digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 250); 
+digitalWrite(motor22, HIGH); 
+analogWrite(motor21, 250);
+delay(750);
+} 
+forward();
+delay(20);
+}
+
+void onlyoneEighty()
+{
+digitalWrite(motor12, LOW); 
+analogWrite(motor11, 250); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 250);
+delay(650); 
+}
+
+void halfoneEighty(){ 
+digitalWrite(motor12, LOW); 
+analogWrite(motor11, 250); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 250);
+delay(300); 
+}
+void halfoneEightyright(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 250); 
+digitalWrite(motor22, HIGH); 
+analogWrite(motor21, 250);
+delay(300); 
+}
+void forward(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 235); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 220); 
+}
+void turnLEFT(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 120); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 190); 
+}
+void turnLEFTBIG(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 40); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 190);
+delay(100);   
+}
+void turnRIGHT(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 190); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 120);  
+ }
+void turnRIGHTBIG(){
+digitalWrite(motor12, HIGH); 
+analogWrite(motor11, 190); 
+digitalWrite(motor22, LOW); 
+analogWrite(motor21, 40);
+delay(100);  
+ }
+void reverse(){
+digitalWrite(motor11, LOW);
+analogWrite(motor12, 190);
+digitalWrite(motor21, HIGH);
+analogWrite(motor22, 190);
+delay(2000);
+} 
